@@ -4,7 +4,7 @@ import numpy as np
 
 # Initialize MediaPipe Face Detection
 mp_face_detection = mp.solutions.face_detection
-face_detection = mp_face_detection.FaceDetection(min_detection_confidence=0.5)
+face_detection = mp_face_detection.FaceDetection(min_detection_confidence=1)
 mp_draw = mp.solutions.drawing_utils
 
 # Open webcam
