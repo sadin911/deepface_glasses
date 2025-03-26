@@ -59,8 +59,8 @@ def detect_glasses(frame):
             height = int(bbox.height * h)
             
             # Add padding (e.g., 20% of face size) for better context
-            padding_x = int(width * 0.2)
-            padding_y = int(height * 0.2)
+            padding_x = int(width * 0.5)
+            padding_y = int(height * 0.5)
             xmin = max(0, xmin - padding_x)
             ymin = max(0, ymin - padding_y)
             xmax = min(w, xmin + width + 2 * padding_x)
