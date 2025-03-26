@@ -26,7 +26,7 @@ preprocess = transforms.Compose([
 ])
 
 # Directories
-INPUT_DIR = r"D:\UTK\part1"
+INPUT_DIR = r"D:\UTK\part3"
 GLASSES_DIR = "./images/glasses"
 NO_GLASSES_DIR = "./images/noglasses"
 

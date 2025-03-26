@@ -13,12 +13,14 @@ if device.type == 'cuda':
     print(f"GPU Name: {torch.cuda.get_device_name(0)}")
 
 # Hyperparameters
-NUM_EPOCHS = 10
+NUM_EPOCHS = 50
 BATCH_SIZE = 32
 LEARNING_RATE = 0.001
 DATA_DIR = './data'
-CHECKPOINT_PATH = './glasses_detector_checkpoint.pth'  # Checkpoint file
-MODEL_PATH = './glasses_detector_full.pth'  # Full model file
+CHECKPOINT_PATH = './glasses_detector_checkpoint.pth'
+MODEL_PATH = './glasses_detector_full.pth'
+LOG_DIR = './runs'
+LOG_FILE = os.path.join(LOG_DIR, 'glasses_detection_events')
 
 # Data preprocessing
 data_transforms = {
@@ -54,7 +56,7 @@ model = models.mobilenet_v2(weights=models.MobileNet_V2_Weights.IMAGENET1K_V1)
 model.classifier[1] = nn.Linear(model.last_channel, 2)
 model = model.to(device)
 
-# Load existing checkpoint if available (for resuming)
+# Load existing checkpoint if available
 if os.path.exists(CHECKPOINT_PATH):
     model.load_state_dict(torch.load(CHECKPOINT_PATH, map_location=device))
     print(f"Loaded checkpoint from {CHECKPOINT_PATH}")
@@ -63,8 +65,10 @@ if os.path.exists(CHECKPOINT_PATH):
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
-# TensorBoard writer with fixed log directory
-writer = SummaryWriter('runs/glasses_detection')
+# TensorBoard writer with single log file and real-time flushing
+os.makedirs(LOG_DIR, exist_ok=True)
+writer = SummaryWriter(log_dir=LOG_FILE)
+print(f"Logging to TensorBoard file: {LOG_FILE}")
 
 def train_model(train_loader, val_loader):
     global_step = 0
@@ -93,6 +97,8 @@ def train_model(train_loader, val_loader):
             epoch_total += labels.size(0)
             epoch_correct += (predicted == labels).sum().item()
             
+            # Log step-level metrics every 10 steps (adjustable)
+            global_step += 1
             if (i + 1) % 10 == 0:
                 step_loss = loss.item()
                 step_accuracy = 100 * (predicted == labels).sum().item() / labels.size(0)
@@ -100,8 +106,7 @@ def train_model(train_loader, val_loader):
                       f'Loss: {step_loss:.4f}, Accuracy: {step_accuracy:.2f}%')
                 writer.add_scalar('training_loss_step', step_loss, global_step)
                 writer.add_scalar('training_accuracy_step', step_accuracy, global_step)
-            
-            global_step += 1
+                writer.flush()  # Flush to disk for real-time updates
         
         # Log epoch-level training metrics
         avg_train_loss = epoch_loss / epoch_total
@@ -110,6 +115,7 @@ def train_model(train_loader, val_loader):
               f'Train Accuracy: {train_accuracy:.2f}%')
         writer.add_scalar('training_loss_epoch', avg_train_loss, epoch)
         writer.add_scalar('training_accuracy_epoch', train_accuracy, epoch)
+        writer.flush()  # Flush epoch metrics
         
         # Validation phase
         model.eval()
@@ -134,8 +140,9 @@ def train_model(train_loader, val_loader):
               f'Accuracy: {val_accuracy:.2f}%')
         writer.add_scalar('validation_loss', avg_val_loss, epoch)
         writer.add_scalar('validation_accuracy', val_accuracy, epoch)
+        writer.flush()  # Flush validation metrics
         
-        # Save checkpoint after every epoch (overwrites previous)
+        # Save checkpoint after every epoch
         torch.save(model.state_dict(), CHECKPOINT_PATH)
         print(f"Checkpoint saved at epoch {epoch+1} to '{CHECKPOINT_PATH}'")
     
